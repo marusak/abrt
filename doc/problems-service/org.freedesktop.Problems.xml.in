@@ -924,10 +924,6 @@ for prblmprx in problems.GetProblems():
                     <tp:docstring>Describes the change that happened and can be one of the following values:
                         <variablelist>
                             <varlistentry>
-                                <term>-1</term>
-                                <listitem><para>The recent authorization request has failed.</para></listitem>
-                            </varlistentry>
-                            <varlistentry>
                                 <term>0</term>
                                 <listitem><para>The recent authorization request has succeeded and the client is now authorized.</para></listitem>
                             </varlistentry>

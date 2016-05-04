@@ -374,6 +374,22 @@ static void session_object_dbus_method_call(GDBusConnection *connection,
 
     if (strcmp("Authorize", method_name) == 0)
     {
+        struct user_info *user = abrt_p2_service_user_lookup(service,
+                                                             caller_uid);
+        for (GList *us = user->sessions; us != NULL; us = g_list_next(us))
+        {
+            AbrtP2Session *s = ABRT_P2_SESSION(us->data);
+            if (!abrt_p2_session_is_authorized(s))
+                continue;
+
+            log_info("Re-authorized session '%s' by another authorized session", object_path);
+
+            const gint32 retval = abrt_p2_session_grant_authorization(session);
+            GVariant *response = g_variant_new("(i)", retval);
+            g_dbus_method_invocation_return_value(invocation, response);
+            return;
+        }
+
         GVariant *details = g_variant_get_child_value(parameters, 0);
         const gint32 retval = abrt_p2_session_authorize(session, details);
         g_variant_unref(details);

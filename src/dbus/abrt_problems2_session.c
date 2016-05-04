@@ -127,9 +127,10 @@ static void abrt_p2_session_init(AbrtP2Session *self)
     self->pv = abrt_p2_session_get_instance_private(self);
 }
 
-static void emit_authorization_changed(AbrtP2Session *session, gint32 status)
+static void emit_authorization_changed(AbrtP2Session *session,
+            AbrtP2SessionAuthChangedStatus status)
 {
-    g_signal_emit(session, s_signals[SN_AUTHORIZATION_CHANGED], 0, status);
+    g_signal_emit(session, s_signals[SN_AUTHORIZATION_CHANGED], 0, (gint32)status);
 }
 
 static void change_state(AbrtP2Session *session, int new_state)
@@ -137,29 +138,34 @@ static void change_state(AbrtP2Session *session, int new_state)
     if (session->pv->p2s_state == new_state)
         return;
 
-    int value = -1;
+    AbrtP2SessionAuthChangedStatus value = -1;
     int old_state = session->pv->p2s_state;
     session->pv->p2s_state = new_state;
 
     if      (old_state == ABRT_P2_SESSION_STATE_INIT    && new_state == ABRT_P2_SESSION_STATE_PENDING)
     {
         log_debug("Authorization request is pending");
-        value = 1;
+        value = ABRT_P2_SESSION_CHANGED_PENDING;
+    }
+    if      (old_state == ABRT_P2_SESSION_STATE_INIT    && new_state == ABRT_P2_SESSION_STATE_AUTH)
+    {
+        log_debug("Authorization has been granted");
+        value = ABRT_P2_SESSION_CHANGED_AUTHORIZED;
     }
     else if (old_state == ABRT_P2_SESSION_STATE_PENDING && new_state == ABRT_P2_SESSION_STATE_AUTH)
     {
         log_debug("Authorization has been acquired");
-        value = 0;
+        value = ABRT_P2_SESSION_CHANGED_AUTHORIZED;
     }
     else if (old_state == ABRT_P2_SESSION_STATE_AUTH    && new_state == ABRT_P2_SESSION_STATE_INIT)
     {
         log_debug("Authorization request has been lost");
-        value = 2;
+        value = ABRT_P2_SESSION_CHANGED_NOT_AUTHORIZED;
     }
     else if (old_state == ABRT_P2_SESSION_STATE_PENDING && new_state == ABRT_P2_SESSION_STATE_INIT)
     {
         log_debug("Authorization request has failed");
-        value = 3;
+        value = ABRT_P2_SESSION_CHANGED_FAILED;
     }
     else
         goto forgotten_state;
@@ -255,23 +261,23 @@ AbrtP2Session *abrt_p2_session_new(char *caller, uid_t uid)
     return node;
 }
 
-gint32 abrt_p2_session_authorize(AbrtP2Session *session, GVariant *parameters)
+AbrtP2SessionAuthRequestRet abrt_p2_session_authorize(AbrtP2Session *session, GVariant *parameters)
 {
     switch(session->pv->p2s_state)
     {
         case ABRT_P2_SESSION_STATE_INIT:
             authorization_request_initialize(session, parameters);
-            return 1;
+            return ABRT_P2_SESSION_AUTHORIZE_ACCEPTED;
 
         case ABRT_P2_SESSION_STATE_PENDING:
-            return 2;
+            return ABRT_P2_SESSION_AUTHORIZE_PENDING;
 
         case ABRT_P2_SESSION_STATE_AUTH:
-            return 0;
+            return ABRT_P2_SESSION_AUTHORIZE_GRANTED;
 
         default:
             error_msg("BUG: %s: forgotten state -> %d", __func__, session->pv->p2s_state);
-            return -1;
+            return ABRT_P2_SESSION_AUTHORIZE_FAILED;
     }
 
 }
@@ -296,6 +302,30 @@ void abrt_p2_session_close(AbrtP2Session *session)
             /* pass */
             break;
     }
+}
+
+AbrtP2SessionAuthRequestRet abrt_p2_session_grant_authorization(AbrtP2Session *session)
+{
+    switch(session->pv->p2s_state)
+    {
+        case ABRT_P2_SESSION_STATE_AUTH:
+            /* pass */
+            break;
+
+        case ABRT_P2_SESSION_STATE_PENDING:
+            {
+                g_cancellable_cancel(session->pv->p2s_auth_rq->cancellable);
+                authorization_request_destroy(session);
+                change_state(session, ABRT_P2_SESSION_STATE_AUTH);
+            }
+            break;
+
+        case ABRT_P2_SESSION_STATE_INIT:
+            change_state(session, ABRT_P2_SESSION_STATE_AUTH);
+            break;
+    }
+
+    return ABRT_P2_SESSION_AUTHORIZE_GRANTED;
 }
 
 uid_t abrt_p2_session_uid(AbrtP2Session *session)

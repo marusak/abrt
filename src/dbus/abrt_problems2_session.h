@@ -81,8 +81,24 @@ const char *abrt_p2_session_caller(AbrtP2Session *session);
 
 int abrt_p2_session_is_authorized(AbrtP2Session *session);
 
-gint32 abrt_p2_session_authorize(AbrtP2Session *session,
+typedef enum {
+    ABRT_P2_SESSION_AUTHORIZE_FAILED = -1,
+    ABRT_P2_SESSION_AUTHORIZE_GRANTED = 0,
+    ABRT_P2_SESSION_AUTHORIZE_ACCEPTED = 1,
+    ABRT_P2_SESSION_AUTHORIZE_PENDING = 2,
+} AbrtP2SessionAuthRequestRet;
+
+typedef enum {
+    ABRT_P2_SESSION_CHANGED_AUTHORIZED = 0,
+    ABRT_P2_SESSION_CHANGED_PENDING = 1,
+    ABRT_P2_SESSION_CHANGED_NOT_AUTHORIZED = 2,
+    ABRT_P2_SESSION_CHANGED_FAILED = 3,
+} AbrtP2SessionAuthChangedStatus;
+
+AbrtP2SessionAuthRequestRet abrt_p2_session_authorize(AbrtP2Session *session,
             GVariant *parameters);
+
+AbrtP2SessionAuthRequestRet abrt_p2_session_grant_authorization(AbrtP2Session *session);
 
 void abrt_p2_session_close(AbrtP2Session *session);
 
