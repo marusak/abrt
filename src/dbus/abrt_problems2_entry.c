@@ -58,7 +58,8 @@ AbrtP2Entry *abrt_p2_entry_new(char *dirname)
     return abrt_p2_entry_new_with_state(dirname, ABRT_P2_ENTRY_STATE_COMPLETE);
 }
 
-AbrtP2Entry *abrt_p2_entry_new_with_state(char *dirname, AbrtP2EntryState state)
+AbrtP2Entry *abrt_p2_entry_new_with_state(char *dirname,
+            AbrtP2EntryState state)
 {
     AbrtP2Entry *entry = g_object_new(TYPE_ABRT_P2_ENTRY, NULL);
     entry->pv->p2e_dirname = dirname;
@@ -82,14 +83,18 @@ const char *abrt_p2_entry_problem_id(AbrtP2Entry *entry)
     return entry->pv->p2e_dirname;
 }
 
-int abrt_p2_entry_accessible_by_uid(AbrtP2Entry *entry, uid_t uid, struct dump_dir **dd)
+int abrt_p2_entry_accessible_by_uid(AbrtP2Entry *entry,
+            uid_t uid,
+            struct dump_dir **dd)
 {
     struct dump_dir *tmp = dd_opendir(entry->pv->p2e_dirname, DD_OPEN_FD_ONLY
                                                               | DD_FAIL_QUIETLY_ENOENT
                                                               | DD_FAIL_QUIETLY_EACCES);
     if (tmp == NULL)
     {
-        VERB2 perror_msg("can't open problem directory '%s'", entry->pv->p2e_dirname);
+        VERB2 perror_msg("can't open problem directory '%s'",
+                         entry->pv->p2e_dirname);
+
         return -ENOTDIR;
     }
 
@@ -111,6 +116,7 @@ int abrt_p2_entry_delete(AbrtP2Entry *entry, uid_t caller_uid, GError **error)
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
                     "You are not authorized to delete the problem");
+
         return ret;
     }
 
@@ -118,6 +124,7 @@ int abrt_p2_entry_delete(AbrtP2Entry *entry, uid_t caller_uid, GError **error)
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
                     "Problem entry is already deleted");
+
         return -EINVAL;
     }
 
@@ -126,16 +133,17 @@ int abrt_p2_entry_delete(AbrtP2Entry *entry, uid_t caller_uid, GError **error)
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
                     "Cannot lock the problem. Check system logs.");
+
         return -EWOULDBLOCK;
     }
 
     ret = dd_delete(dd);
-
     if (ret != 0)
     {
-        dd_close(dd);
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
                     "Failed to remove problem data. Check system logs.");
+
+        dd_close(dd);
         return ret;
     }
 
@@ -144,9 +152,14 @@ int abrt_p2_entry_delete(AbrtP2Entry *entry, uid_t caller_uid, GError **error)
     return ret;
 }
 
-GVariant *abrt_p2_entry_problem_data(AbrtP2Entry *node, uid_t caller_uid, GError **error)
+GVariant *abrt_p2_entry_problem_data(AbrtP2Entry *node,
+            uid_t caller_uid,
+            GError **error)
 {
-    struct dump_dir *dd = abrt_p2_entry_open_dump_dir(node, caller_uid, DD_OPEN_READONLY, error);
+    struct dump_dir *dd = abrt_p2_entry_open_dump_dir(node,
+                                                      caller_uid,
+                                                      DD_OPEN_READONLY,
+                                                      error);
     if (dd == NULL)
         return NULL;
 
@@ -192,6 +205,7 @@ struct dump_dir *abrt_p2_entry_open_dump_dir(AbrtP2Entry *entry,
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
                     "You are not authorized to access the problem");
+
         return NULL;
     }
 
@@ -200,6 +214,7 @@ struct dump_dir *abrt_p2_entry_open_dump_dir(AbrtP2Entry *entry,
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                     "Failed reopen dump directory");
+
         return NULL;
     }
 
@@ -222,9 +237,9 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                     "Invalid arguments 'ALL FD' ~ 'ALL NO FD'");
+
         return NULL;
     }
-
 
     struct dump_dir *dd = abrt_p2_entry_open_dump_dir(entry,
                                                       caller_uid,
@@ -250,7 +265,11 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
         int elem_type = 0;
         char *data = NULL;
         int fd = -1;
-        int r = problem_data_load_dump_dir_element(dd, name, &data, &elem_type, &fd);
+        const int r = problem_data_load_dump_dir_element(dd,
+                                                         name,
+                                                         &data,
+                                                         &elem_type,
+                                                         &fd);
         if (r < 0)
         {
             if (r == -ENOENT)
@@ -259,6 +278,7 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
                 error_msg("Attempt to read prohibited data: '%s'", name);
             else
                 error_msg("Failed to open %s: %s", name, strerror(-r));
+
             continue;
         }
 
@@ -268,6 +288,7 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
            )
         {
             log_debug("Element is not of the requested type: %s", name);
+
             free(data);
             close(fd);
             continue;
@@ -275,11 +296,13 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
 
         if ((flags & ABRT_P2_ENTRY_READ_ALL_FD) || !(elem_type & CD_FLAG_TXT))
         {
-            free(data);
             log_debug("Rewinding file descriptor %d", fd);
+
+            free(data);
             if (lseek(fd, 0, SEEK_SET))
             {
                 perror_msg("Failed to rewind file descriptor of %s", name);
+
                 close(fd);
                 continue;
             }
@@ -295,24 +318,32 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
             }
 
             GError *error = NULL;
-            gint pos = g_unix_fd_list_append(fd_list, fd, &error);
+            const gint pos = g_unix_fd_list_append(fd_list, fd, &error);
             close(fd);
             if (error != NULL)
             {
-                error_msg("Failed to add file descriptor of %s: %s", name, error->message);
+                error_msg("Failed to add file descriptor of %s: %s",
+                          name,
+                          error->message);
+
                 g_error_free(error);
                 continue;
             }
 
             log_debug("Adding new Unix FD at position: %d",  pos);
-            g_variant_builder_add(&builder, "{sv}", name, g_variant_new("h", pos));
+
+            g_variant_builder_add(&builder, "{sv}",
+                                            name,
+                                            g_variant_new("h",
+                                                          pos));
             continue;
         }
 
         if (!(elem_type & CD_FLAG_TXT))
         {
             data = xmalloc_read(fd, &data_size);
-            log_debug("Re-loaded entire element: %llu Bytes", (long long unsigned)data_size);
+
+            log_debug("Re-loaded entire element: %zu Bytes", data_size);
         }
         else
             data_size = strlen(data);
@@ -324,6 +355,7 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
             error_msg("Element '%s' cannot be returned as array due to length limit: %ld",
                       name,
                       (long)DBUS_MAXIMUM_ARRAY_LENGTH);
+
             free(data);
 
             continue;
@@ -331,7 +363,10 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
 
         if (data_size > max_size || loaded_size > max_size - data_size)
         {
-            error_msg("With element '%s', reached runtime data size limit: %ld", name, max_size);
+            error_msg("With element '%s', reached runtime data size limit: %ld",
+                      name,
+                      max_size);
+
             free(data);
 
             continue;
@@ -339,7 +374,10 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
 
         if (loaded_size > ULONG_MAX - data_size)
         {
-            error_msg("With element '%s', reached static data size limit: %ld", name, max_size);
+            error_msg("With element '%s', reached static data size limit: %ld",
+                      name,
+                      max_size);
+
             free(data);
 
             continue;
@@ -350,12 +388,19 @@ GVariant *abrt_p2_entry_read_elements(AbrtP2Entry *entry,
         if (elem_type & CD_FLAG_BIN)
         {
             log_debug("Adding element binary data");
-            g_variant_builder_add(&builder, "{sv}", name, g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, data, data_size, sizeof(char)));
+            g_variant_builder_add(&builder, "{sv}",
+                                             name,
+                                             g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE,
+                                                                       data,
+                                                                       data_size,
+                                                                       sizeof(char)));
         }
         else
         {
             log_debug("Adding element text data");
-            g_variant_builder_add(&builder, "{sv}", name, g_variant_new_string(data));
+            g_variant_builder_add(&builder, "{sv}",
+                                            name,
+                                            g_variant_new_string(data));
         }
 
         free(data);
@@ -497,18 +542,24 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
     off_t dd_size = dd_compute_size(dd, /*no flags*/0);
     if (dd_size < 0)
     {
-        error_msg("Failed to get file system size of dump dir : %s", strerror(-dd_size));
+        error_msg("Failed to get file system size of dump dir : %s",
+                  strerror(-(int)dd_size));
+
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                     "Dump directory file system size");
+
         return dd_size;
     }
 
     int dd_items = dd_get_items_count(dd);
     if (dd_items < 0)
     {
-        error_msg("Failed to get count of dump dir elements: %s", strerror(-dd_items));
+        error_msg("Failed to get count of dump dir elements: %s",
+                  strerror(-dd_items));
+
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                     "Dump directory elements count");
+
         return dd_items;
     }
 
@@ -516,14 +567,18 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
     while (g_variant_iter_loop(&iter, "{sv}", &name, &value))
     {
         log_debug("Saving element: %s", name);
+
         struct stat item_stat;
         memset(&item_stat, 0, sizeof(item_stat));
-        int r = dd_item_stat(dd, name, &item_stat);
+
+        const int r = dd_item_stat(dd, name, &item_stat);
         if (r == -EINVAL)
         {
             error_msg("Attempt to save prohibited data: '%s'", name);
+
             g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
                         "Not allowed problem element name");
+
             retval = -EACCES;
             goto exit_loop_on_error;
         }
@@ -532,9 +587,12 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
             if (limits->elements_count != 0 && dd_items >= limits->elements_count)
             {
                 error_msg("Cannot create new element '%s': reached the limit for elements %u",
-                          name, limits->elements_count);
+                          name,
+                          limits->elements_count);
+
                 if (flags & ABRT_P2_ENTRY_ELEMENTS_COUNT_LIMIT_FATAL)
                     goto exit_loop_on_too_many_elements;
+
                 continue;
             }
 
@@ -543,13 +601,16 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
         else if (r < 0)
         {
             error_msg("Failed to get size of element '%s'", name);
+
             if (flags & ABRT_P2_ENTRY_IO_ERROR_FATAL)
             {
                 g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                             "Failed to get size of underlying data");
+
                 retval = r;
                 goto exit_loop_on_error;
             }
+
             continue;
         }
 
@@ -563,34 +624,45 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
             if (g_variant_is_of_type(value, G_VARIANT_TYPE_BYTESTRING))
             {
                 log_debug("Saving binary element");
+
                 /* Using G_VARIANT_TYPE_BYTESTRING only to check the type. */
                 gsize n_elements = 0;
                 const gsize element_size = sizeof(guchar);
-                data = g_variant_get_fixed_array(value, &n_elements,
-                                        element_size);
+                data = g_variant_get_fixed_array(value,
+                                                 &n_elements,
+                                                 element_size);
+
                 data_size = n_elements * element_size;
             }
             else
             {
                 log_debug("Saving text element");
+
                 gsize size = 0;
                 data = g_variant_get_string(value, &size);
                 if (size >= (1ULL << (8 * sizeof(off_t) - 1)))
                 {
                     g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                                 "Cannot read huge text data");
+
                     retval = -EINVAL;
                     goto exit_loop_on_error;
                 }
+
                 data_size = (off_t)size;
             }
 
             if (allowed_new_user_problem_entry(caller_uid, name, data) == false)
             {
-                error_msg("Not allowed for user %lu: %s = %s", (long unsigned)caller_uid, name, data);
+                error_msg("Not allowed for user %lu: %s = %s",
+                          (long unsigned)caller_uid,
+                          name,
+                          data);
+
                 g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                             "You are not allowed to create element '%s' containing '%s'",
                             name, data);
+
                 retval = -EPERM;
                 goto exit_loop_on_error;
             }
@@ -601,11 +673,19 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
                 && data_size > item_stat.st_size
                 && base_size + data_size > limits->data_size)
             {
-                error_msg("Cannot save text element: problem data size limit %ld, data size %ld, item size %ld, base size %ld",
-                          limits->data_size, data_size, item_stat.st_size, base_size);
+                error_msg("Cannot save text element: "
+                          "problem data size limit %lld, "
+                          "data size %lld, "
+                          "item size %lld, "
+                          "base size %lld",
+                          (long long int)limits->data_size,
+                          (long long int)data_size,
+                          (long long int)item_stat.st_size,
+                          (long long int)base_size);
 
                 if (flags & ABRT_P2_ENTRY_DATA_SIZE_LIMIT_FATAL)
                     goto exit_loop_on_too_big_data;
+
                 continue;
             }
 
@@ -619,9 +699,12 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
             if (problem_entry_is_post_create_condition(name))
             {
                 error_msg("post-create element as file descriptor: %s", name);
+
                 g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                             "Element '%s' must be of '%s' D-Bus type",
-                            name, g_variant_type_peek_string(G_VARIANT_TYPE_STRING));
+                            name,
+                            g_variant_type_peek_string(G_VARIANT_TYPE_STRING));
+
                 retval = -EINVAL;
                 goto exit_loop_on_error;
             }
@@ -631,14 +714,19 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
             int fd = g_unix_fd_list_get(fd_list, handle, error);
             if (*error != NULL)
             {
-                error_msg("Failed to get file descriptor of %s: %s", name, (*error)->message);
+                error_msg("Failed to get file descriptor of %s: %s",
+                          name,
+                          (*error)->message);
+
                 if (flags & ABRT_P2_ENTRY_IO_ERROR_FATAL)
                 {
                     g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                                 "Failed to get passed file descriptor");
+
                     retval = -EIO;
                     goto exit_loop_on_error;
                 }
+
                 continue;
             }
 
@@ -652,15 +740,20 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
              * function. */
             if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
             {
-                perror_msg("Failed to set file descriptor of %s non-blocking:", name);
+                perror_msg("Failed to set file descriptor of the '%s' item non-blocking:",
+                           name);
+
                 close(fd);
                 if (flags & ABRT_P2_ENTRY_IO_ERROR_FATAL)
                 {
                     g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
-                                "Failed to set file file descriptor of %s non-blocking", name);
+                                "Failed to set file file descriptor of the '%s' item non-blocking",
+                                name);
+
                     retval = -EIO;
                     goto exit_loop_on_error;
                 }
+
                 continue;
             }
 
@@ -670,19 +763,23 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
             if (r < 0)
             {
                 error_msg("Failed to save file descriptor");
+
                 if (flags & ABRT_P2_ENTRY_IO_ERROR_FATAL)
                 {
                     g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
                                 "Failed to save data of passed file descriptor");
+
                     retval = r;
                     goto exit_loop_on_error;
                 }
+
                 continue;
             }
 
             if (r >= max_size)
             {
                 error_msg("File descriptor was truncated due to size limit");
+
                 if (flags & ABRT_P2_ENTRY_DATA_SIZE_LIMIT_FATAL)
                     goto exit_loop_on_too_big_data;
 
@@ -695,10 +792,12 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
         else
         {
             error_msg("Unsupported type: %s", g_variant_get_type_string(value));
+
             if (flags & ABRT_P2_ENTRY_IO_ERROR_FATAL)
             {
                 g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
                             "Not supported D-Bus type");
+
                 retval = -ENOTSUP;
                 goto exit_loop_on_error;
             }
@@ -709,7 +808,7 @@ int abrt_p2_entry_save_elements_in_dump_dir(struct dump_dir *dd,
 
 exit_loop_on_too_big_data:
     g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
-               "Problem data is too big");
+                "Problem data is too big");
     return -EFBIG;
 
 exit_loop_on_too_many_elements:
@@ -787,7 +886,8 @@ void abrt_p2_entry_save_elements_async(AbrtP2Entry *entry,
 }
 
 GVariant *abrt_p2_entry_save_elements_finish(AbrtP2Entry *entry,
-            GAsyncResult *result, GError **error)
+            GAsyncResult *result,
+            GError **error)
 {
     g_return_val_if_fail(g_task_is_valid(result, entry), NULL);
 
@@ -832,7 +932,8 @@ GVariant *abrt_p2_entry_delete_elements(AbrtP2Entry *entry,
 /*
  * Properties
  */
-uid_t abrt_p2_entry_get_owner(AbrtP2Entry *entry, GError **error)
+uid_t abrt_p2_entry_get_owner(AbrtP2Entry *entry,
+            GError **error)
 {
     struct dump_dir *dd = dd_opendir(entry->pv->p2e_dirname, DD_OPEN_FD_ONLY);
     if (dd == NULL)

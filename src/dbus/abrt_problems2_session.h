@@ -25,13 +25,16 @@
 
   Session hold status of authorization and manages client's tasks. Client's
   session destroys client's task when client disconnects. Session should not
-  allow a client to have consume too much resources by allowing him to create
-  enormous number of tasks. D-Bus clients cannot work with task of other
-  clients.
+  allow a client to consume too much resources by allowing him to create
+  enormous number of tasks. D-Bus clients must not be able to work with task of
+  other clients.
 
   Session have two public states and one internal state. The public states are
   authorized or not. The internal state is 'authorization pending' - when
   client requested to authorize the session but PolKit hasn't replied yet.
+
+  If requested, authorization should be automatically granted to users who
+  already owns an authorized session.
 */
 
 #ifndef ABRT_PROBLEMS2_SESSION_H

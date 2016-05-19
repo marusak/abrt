@@ -20,8 +20,6 @@
 
 #include "libabrt.h"
 
-#include <assert.h>
-
 static PolkitAuthority *s_pk_authority;
 
 PolkitAuthority *abrt_p2_session_class_set_polkit_authority(PolkitAuthority *pk_authority)
@@ -46,9 +44,7 @@ PolkitAuthority *abrt_p2_session_class_set_polkit_authority(PolkitAuthority *pk_
 PolkitAuthority *abrt_p2_session_class_polkit_authority(void)
 {
     if (s_pk_authority == NULL)
-    {
         log_debug("Session: Polkit Authority not-yet initialized");
-    }
 
     return s_pk_authority;
 }
@@ -130,7 +126,10 @@ static void abrt_p2_session_init(AbrtP2Session *self)
 static void emit_authorization_changed(AbrtP2Session *session,
             AbrtP2SessionAuthChangedStatus status)
 {
-    g_signal_emit(session, s_signals[SN_AUTHORIZATION_CHANGED], 0, (gint32)status);
+    g_signal_emit(session,
+                  s_signals[SN_AUTHORIZATION_CHANGED],
+                  0,
+                  (gint32)status);
 }
 
 static void change_state(AbrtP2Session *session, int new_state)
@@ -174,7 +173,9 @@ static void change_state(AbrtP2Session *session, int new_state)
     return;
 
 forgotten_state:
-    error_msg("BUG: unsupported state, current : %d, new : %d", session->pv->p2s_state, new_state);
+    error_msg("BUG: unsupported state, current : %d, new : %d",
+              session->pv->p2s_state,
+              new_state);
 }
 
 static void authorization_request_destroy(AbrtP2Session *session)
@@ -186,11 +187,15 @@ static void authorization_request_destroy(AbrtP2Session *session)
     session->pv->p2s_auth_rq = NULL;
 }
 
-static void check_authorization_callback(GObject *source, GAsyncResult *res, gpointer user_data)
+static void check_authorization_callback(GObject *source,
+            GAsyncResult *res,
+            gpointer user_data)
 {
     GError *error = NULL;
     PolkitAuthorizationResult *result = NULL;
-    result = polkit_authority_check_authorization_finish(POLKIT_AUTHORITY(source), res, &error);
+    result = polkit_authority_check_authorization_finish(POLKIT_AUTHORITY(source),
+                                                         res,
+                                                         &error);
 
     int new_state = ABRT_P2_SESSION_STATE_INIT;
     if (result == NULL)
@@ -226,11 +231,19 @@ static void authorization_request_initialize(AbrtP2Session *session, GVariant *p
     PolkitDetails *details = NULL;
     if (parameters != NULL)
     {
-        GVariant *message = g_variant_lookup_value(parameters, "message", G_VARIANT_TYPE_STRING);
+        GVariant *message = g_variant_lookup_value(parameters,
+                                                   "message",
+                                                   G_VARIANT_TYPE_STRING);
+
         if (message != NULL)
         {
             details = polkit_details_new();
-            polkit_details_insert(details, "polkit.message", g_variant_get_string(message, NULL));
+            polkit_details_insert(details,
+                                  "polkit.message",
+                                  g_variant_get_string(message,
+                                                       NULL));
+
+            g_variant_unref(message);
         }
     }
 
@@ -344,9 +357,9 @@ int abrt_p2_session_is_authorized(AbrtP2Session *session)
 }
 
 int abrt_p2_session_check_sanity(AbrtP2Session *session,
-                const char *caller,
-                uid_t caller_uid,
-                GError **error)
+            const char *caller,
+            uid_t caller_uid,
+            GError **error)
 {
     if (strcmp(session->pv->p2s_caller, caller) == 0 && session->pv->p2s_uid == caller_uid)
         /* the session node is sane */
@@ -359,12 +372,15 @@ int abrt_p2_session_check_sanity(AbrtP2Session *session,
     return -1;
 }
 
-uint32_t abrt_p2_session_add_task(AbrtP2Session *session, AbrtP2Task *task, GError **error)
+uint32_t abrt_p2_session_add_task(AbrtP2Session *session,
+            AbrtP2Task *task,
+            GError **error)
 {
     if (session->pv->p2s_task_indexer == (UINT32_MAX - 1))
     {
         g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
                     "Reached the limit of task per session.");
+
         return UINT32_MAX;
     }
 
@@ -381,7 +397,9 @@ uint32_t abrt_p2_session_add_task(AbrtP2Session *session, AbrtP2Task *task, GErr
     return session->pv->p2s_task_indexer++;
 }
 
-void abrt_p2_session_remove_task(AbrtP2Session *session, AbrtP2Task *task, GError **error)
+void abrt_p2_session_remove_task(AbrtP2Session *session,
+            AbrtP2Task *task,
+            GError **error)
 {
     session->pv->p2s_tasks = g_list_remove(session->pv->p2s_tasks, task);
 }
@@ -391,7 +409,8 @@ GList *abrt_p2_session_tasks(AbrtP2Session *session)
     return session->pv->p2s_tasks;
 }
 
-int abrt_p2_session_owns_task(AbrtP2Session *session, AbrtP2Task *task)
+int abrt_p2_session_owns_task(AbrtP2Session *session,
+            AbrtP2Task *task)
 {
     return !(g_list_find(session->pv->p2s_tasks, task));
 }
@@ -401,7 +420,8 @@ int abrt_p2_session_tasks_count(AbrtP2Session *session)
     return g_list_length(session->pv->p2s_tasks);
 }
 
-static void abrt_p2_session_dispose_task(AbrtP2Task *task, gint32 status)
+static void abrt_p2_session_dispose_task(AbrtP2Task *task,
+            gint32 status)
 {
     switch(status)
     {
@@ -411,7 +431,9 @@ static void abrt_p2_session_dispose_task(AbrtP2Task *task, gint32 status)
                 abrt_p2_task_cancel(task, &local_error);
                 if (local_error != NULL)
                 {
-                    error_msg("Task garbage collector failed to cancel task: %s", local_error->message);
+                    error_msg("Task garbage collector failed to cancel task: %s",
+                              local_error->message);
+
                     g_error_free(local_error);
                 }
 
@@ -449,15 +471,21 @@ static void abrt_p2_session_dispose_task(AbrtP2Task *task, gint32 status)
     }
 }
 
-static void abrt_p2_session_delayed_dispose_task(AbrtP2Task *task, gint32 status, gpointer user_data)
+static void abrt_p2_session_delayed_dispose_task(AbrtP2Task *task,
+            gint32 status,
+            gpointer user_data)
 {
     if (status == ABRT_P2_TASK_STATUS_RUNNING)
     {
         error_msg("BUG: task to dispose must not change state to RUNNING");
+
         abort();
     }
 
-    log_debug("Going to dispose delayed task: %p: %d", task, status);
+    log_debug("Going to dispose delayed task: %p: %d",
+              task,
+              status);
+
     abrt_p2_session_dispose_task(task, status);
 }
 
@@ -472,17 +500,25 @@ void abrt_p2_session_clean_tasks(AbrtP2Session *session)
         if (status != ABRT_P2_TASK_STATUS_RUNNING)
         {
             abrt_p2_session_dispose_task(t, status);
+
             continue;
         }
 
-        GError *local_error = NULL;
         log_debug("Delaying disposal of running task: %p", t);
-        g_signal_connect(t, "status-changed", G_CALLBACK(abrt_p2_session_delayed_dispose_task), NULL);
+
+        g_signal_connect(t,
+                         "status-changed",
+                         G_CALLBACK(abrt_p2_session_delayed_dispose_task),
+                         NULL);
+
+        GError *local_error = NULL;
         abrt_p2_task_cancel(t, &local_error);
 
         if (local_error != NULL)
         {
-            error_msg("Task garbage collector failed to cancel running task: %s", local_error->message);
+            error_msg("Task garbage collector failed to cancel running task: %s",
+                      local_error->message);
+
             g_error_free(local_error);
         }
 

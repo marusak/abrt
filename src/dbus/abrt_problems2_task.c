@@ -76,14 +76,18 @@ static void abrt_p2_task_init(AbrtP2Task *self)
     self->pv->p2t_details = g_variant_new("a{sv}", NULL);
 }
 
-static void abrt_p2_task_change_status(AbrtP2Task *task, AbrtP2TaskStatus status)
+static void abrt_p2_task_change_status(AbrtP2Task *task,
+            AbrtP2TaskStatus status)
 {
     if (task->pv->p2t_status == status)
         return;
 
     task->pv->p2t_status = status;
 
-    g_signal_emit(task, s_signals[SN_STATUS_CHANGED], 0, status);
+    g_signal_emit(task,
+                  s_signals[SN_STATUS_CHANGED],
+                  0,
+                  status);
 }
 
 AbrtP2TaskStatus abrt_p2_task_status(AbrtP2Task *task)
@@ -96,7 +100,9 @@ GVariant *abrt_p2_task_details(AbrtP2Task *task)
     return g_variant_ref(task->pv->p2t_details);
 }
 
-void abrt_p2_task_add_detail(AbrtP2Task *task, const char *key, GVariant *value)
+void abrt_p2_task_add_detail(AbrtP2Task *task,
+            const char *key,
+            GVariant *value)
 {
     GVariantDict dict;
     g_variant_dict_init(&dict, task->pv->p2t_details);
@@ -108,7 +114,8 @@ void abrt_p2_task_add_detail(AbrtP2Task *task, const char *key, GVariant *value)
     task->pv->p2t_details = g_variant_dict_end(&dict);
 }
 
-void abrt_p2_task_set_response(AbrtP2Task *task, GVariant *response)
+void abrt_p2_task_set_response(AbrtP2Task *task,
+            GVariant *response)
 {
     if (task->pv->p2t_results != NULL)
         log_warning("Task already has response assigned");
@@ -123,7 +130,8 @@ bool abrt_p2_task_is_cancelled(AbrtP2Task *task)
            || task->pv->p2t_status == ABRT_P2_TASK_STATUS_CANCELED;
 }
 
-void abrt_p2_task_cancel(AbrtP2Task *task, GError **error)
+void abrt_p2_task_cancel(AbrtP2Task *task,
+            GError **error)
 {
     if (abrt_p2_task_is_cancelled(task))
         return;
@@ -133,6 +141,7 @@ void abrt_p2_task_cancel(AbrtP2Task *task, GError **error)
     else if (task->pv->p2t_status == ABRT_P2_TASK_STATUS_STOPPED)
     {
         ABRT_P2_TASK_VIRTUAL_CANCEL(task, error);
+
         if (*error == NULL)
             abrt_p2_task_change_status(task, ABRT_P2_TASK_STATUS_CANCELED);
     }
@@ -185,11 +194,13 @@ static void abrt_p2_task_finish_gtask(GObject *source_object,
     if (code == ABRT_P2_TASK_CODE_STOP)
     {
         log_debug("Task stopped");
+
         abrt_p2_task_change_status(task, ABRT_P2_TASK_STATUS_STOPPED);
     }
     else if (code >= ABRT_P2_TASK_CODE_DONE)
     {
         log_debug("Task done");
+
         task->pv->p2t_code = code - ABRT_P2_TASK_CODE_DONE;
         abrt_p2_task_change_status(task, ABRT_P2_TASK_STATUS_DONE);
     }
@@ -198,6 +209,7 @@ static void abrt_p2_task_finish_gtask(GObject *source_object,
         if (error != NULL)
         {
             log_debug("Task canceled with error: %s", error->message);
+
             g_error_free(error);
             error = NULL;
         }
@@ -215,18 +227,34 @@ static void abrt_p2_task_finish_gtask(GObject *source_object,
         if (error != NULL)
         {
             log_debug("Task failed with error: %s", error->message);
-            g_variant_dict_insert(&response, "Error.Message", "s", error->message);
+
+            g_variant_dict_insert(&response,
+                                  "Error.Message",
+                                  "s",
+                                  error->message);
+
             g_error_free(error);
         }
         else if (code == ABRT_P2_TASK_CODE_ERROR)
         {
             log_debug("Task failed without error message");
-            g_variant_dict_insert(&response, "Error.Message", "s", "Task failed");
+
+            g_variant_dict_insert(&response,
+                                  "Error.Message",
+                                  "s",
+                                  "Task failed");
         }
         else
         {
-            error_msg("BUG:%s:%s: unknown Task return code: %d", __FILE__, __func__, code);
-            g_variant_dict_insert(&response, "Error.Message", "s", "Internal error: Invalid Task return code");
+            error_msg("BUG:%s:%s: unknown Task return code: %d",
+                      __FILE__,
+                      __func__,
+                      code);
+
+            g_variant_dict_insert(&response,
+                                  "Error.Message",
+                                  "s",
+                                  "Internal error: Invalid Task return code");
         }
 
         abrt_p2_task_set_response(task, g_variant_dict_end(&response));
@@ -238,9 +266,9 @@ static void abrt_p2_task_finish_gtask(GObject *source_object,
 }
 
 static void abrt_p2_task_thread(GTask *task,
-                gpointer source_object,
-                gpointer task_data,
-                GCancellable *cancellable)
+            gpointer source_object,
+            gpointer task_data,
+            GCancellable *cancellable)
 {
     AbrtP2Task *stask = source_object;
 
@@ -253,7 +281,9 @@ static void abrt_p2_task_thread(GTask *task,
         g_task_return_error(task, error);
 }
 
-void abrt_p2_task_start(AbrtP2Task *task, GVariant *options, GError **error)
+void abrt_p2_task_start(AbrtP2Task *task,
+            GVariant *options,
+            GError **error)
 {
     if (   task->pv->p2t_status != ABRT_P2_TASK_STATUS_NEW
         && task->pv->p2t_status != ABRT_P2_TASK_STATUS_STOPPED)
@@ -281,8 +311,8 @@ void abrt_p2_task_start(AbrtP2Task *task, GVariant *options, GError **error)
 }
 
 static void abrt_p2_task_autonomous_cb(AbrtP2Task *task,
-                gint32 status,
-                gpointer user_data)
+            gint32 status,
+            gpointer user_data)
 {
     switch(status)
     {
@@ -297,11 +327,14 @@ static void abrt_p2_task_autonomous_cb(AbrtP2Task *task,
         case ABRT_P2_TASK_STATUS_STOPPED:
             {
                 error_msg("Autonomous task has been stopped and will be canceled");
+
                 GError *error = NULL;
                 abrt_p2_task_cancel(task, &error);
                 if (error != NULL)
                 {
-                    error_msg("Failed to cancel stopped autonomous task: %s", error->message);
+                    error_msg("Failed to cancel stopped autonomous task: %s",
+                               error->message);
+
                     g_error_free(error);
                     g_object_unref(task);
                 }
@@ -346,7 +379,8 @@ static void abrt_p2_task_autonomous_cb(AbrtP2Task *task,
     }
 }
 
-void abrt_p2_task_autonomous_run(AbrtP2Task *task, GError **error)
+void abrt_p2_task_autonomous_run(AbrtP2Task *task,
+        GError **error)
 {
     g_signal_connect(task,
                      "status-changed",

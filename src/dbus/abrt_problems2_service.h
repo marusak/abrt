@@ -154,43 +154,68 @@ GVariant *abrt_p2_service_delete_problems(AbrtP2Service *service,
             uid_t caller_uid,
             GError **error);
 
-/*
- * Configuration and limits
+/* Configuration option: D-Bus maximum size of a message, to avoid magical
+ *                       disappearing of the service - if you exceed this limit
+ *                       D-Bus daemon disconnects you from the bus
  */
 long abrt_p2_service_max_message_size(AbrtP2Service *service);
+
 void abrt_p2_service_set_max_message_size(AbrtP2Service *service,
             long max_message_size);
 
+/* Configuration option: D-Bus maximum unix fds in a message, to avoid magical
+ *                       disappearing of the service - if you exceed this limit
+ *                       D-Bus daemon disconnects you from the bus
+ */
 long abrt_p2_service_max_message_unix_fds(AbrtP2Service *service);
+
 void abrt_p2_service_set_max_message_unix_fds(AbrtP2Service *service,
             long max_message_unix_fds);
 
-unsigned abrt_p2_service_user_clients_limit(AbrtP2Service *service, uid_t uid);
+/* Configuration option: maximal number of connected clients per user */
+unsigned abrt_p2_service_user_clients_limit(AbrtP2Service *service,
+            uid_t uid);
+
 void abrt_p2_service_set_user_clients_limit(AbrtP2Service *service,
             uid_t uid,
             unsigned limit);
 
-unsigned abrt_p2_service_elements_limit(AbrtP2Service *service, uid_t uid);
+/* Configuration option: elements count limit */
+unsigned abrt_p2_service_elements_limit(AbrtP2Service *service,
+        uid_t uid);
+
 void abrt_p2_service_set_elements_limit(AbrtP2Service *service,
             uid_t uid,
             unsigned limit);
 
-off_t abrt_p2_service_data_size_limit(AbrtP2Service *service, uid_t uid);
+/* Configuration option: data size limit */
+off_t abrt_p2_service_data_size_limit(AbrtP2Service *service,
+            uid_t uid);
+
 void abrt_p2_service_set_data_size_limit(AbrtP2Service *service,
             uid_t uid,
             off_t limit);
 
-unsigned abrt_p2_service_user_problems_limit(AbrtP2Service *service, uid_t uid);
+/* Configuration option: user problems limit */
+unsigned abrt_p2_service_user_problems_limit(AbrtP2Service *service,
+           uid_t uid);
+
 void abrt_p2_service_set_user_problems_limit(AbrtP2Service *service,
             uid_t uid,
             unsigned limit);
 
-unsigned abrt_p2_service_new_problem_throttling_magnitude(AbrtP2Service *service, uid_t uid);
+/* Configuration option: throttling magnitude */
+unsigned abrt_p2_service_new_problem_throttling_magnitude(AbrtP2Service *service,
+            uid_t uid);
+
 void abrt_p2_service_set_new_problem_throttling_magnitude(AbrtP2Service *service,
             uid_t uid,
             unsigned limit);
 
-unsigned abrt_p2_service_new_problems_batch(AbrtP2Service *service, uid_t uid);
+/* Configuration option: new problems batch */
+unsigned abrt_p2_service_new_problems_batch(AbrtP2Service *service,
+            uid_t uid);
+
 void abrt_p2_service_set_new_problems_batch(AbrtP2Service *service,
             uid_t uid,
             unsigned limit);
