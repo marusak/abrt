@@ -36,6 +36,25 @@ char *docker_inspect(const char *root_dir, const char *container_id)
     return output;
 }
 
+char *guess_container_id_from_cmdline(struct dump_dir *dd){
+    log_debug("Guessing container ID from cmdline");
+    char *cmdline = dd_load_text(dd, FILENAME_CONTAINER_CMDLINE);
+
+    //get 12 characters after first space
+    char *first_space = strchr(cmdline, ' ');
+    if (!first_space){
+        return NULL;
+    }
+    char *container_id = xstrndup(first_space + 1, 12);
+    log_debug("Got one ID '%s'", container_id);
+    //free(cmdline);
+
+    if (strlen(container_id) != 12){
+        return NULL;
+    }
+    return container_id;
+}
+
 void dump_docker_info(struct dump_dir *dd, const char *root_dir)
 {
     if (!dd_exist(dd, FILENAME_CONTAINER))
@@ -139,8 +158,25 @@ void dump_docker_info(struct dump_dir *dd, const char *root_dir)
 
     if (container_id == NULL)
     {
-        error_msg("Could not inspect the container");
-        goto dump_docker_info_cleanup;
+        container_id = guess_container_id_from_cmdline(dd);
+        if (container_id != NULL)
+        {
+            output = docker_inspect(root_dir, container_id);
+            if (output == NULL || strcmp(output, "[]\n") == 0)
+            {
+                log_debug("Unsupported container ID: '%s'", container_id);
+
+                free(container_id);
+                container_id = NULL;
+
+                free(output);
+                output = NULL;
+            }
+        }
+        else {
+            error_msg("Could not inspect the container");
+            goto dump_docker_info_cleanup;
+        }
     }
 
     dd_save_text(dd, FILENAME_CONTAINER_ID, container_id);
