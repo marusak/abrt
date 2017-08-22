@@ -317,6 +317,13 @@ save_systemd_coredump_in_dump_directory(struct dump_dir *dd, struct crash_info *
         dd_save_binary(dd, FILENAME_CONTAINER_CMDLINE, data, data_len);
     }
 
+    if (!abrt_journal_get_field(info->ci_journal, "COREDUMP_PROC_MOUNTINFO", (const void **)&data, &data_len))
+    {
+        if (!dd_exist(dd, FILENAME_MOUNTINFO))
+            dd_save_binary(dd, FILENAME_MOUNTINFO, data, data_len);
+    }
+
+
     for (size_t i = 0; i < info->ci_mapping_items; ++i)
     {
         const char *data;
