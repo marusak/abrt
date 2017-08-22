@@ -19,6 +19,23 @@
 #include "libabrt.h"
 #include <json.h>
 
+char *docker_inspect(const char *root_dir, const char *container_id)
+{
+    char *docker_inspect_cmdline = NULL;
+
+    if (root_dir != NULL)
+        docker_inspect_cmdline = xasprintf("chroot %s /bin/sh -c \"docker inspect %s\"", root_dir, container_id);
+    else
+        docker_inspect_cmdline = xasprintf("docker inspect %s", container_id);
+
+    log_debug("Executing: '%s'", docker_inspect_cmdline);
+    char *output = run_in_shell_and_save_output(0, docker_inspect_cmdline, "/", NULL);
+
+    free(docker_inspect_cmdline);
+
+    return output;
+}
+
 void dump_docker_info(struct dump_dir *dd, const char *root_dir)
 {
     if (!dd_exist(dd, FILENAME_CONTAINER))
@@ -101,16 +118,7 @@ void dump_docker_info(struct dump_dir *dd, const char *root_dir)
             continue;
         }
 
-        char *docker_inspect_cmdline = NULL;
-        if (root_dir != NULL)
-            docker_inspect_cmdline = xasprintf("chroot %s /bin/sh -c \"docker inspect %s\"", root_dir, container_id);
-        else
-            docker_inspect_cmdline = xasprintf("docker inspect %s", container_id);
-
-        log_debug("Executing: '%s'", docker_inspect_cmdline);
-        output = run_in_shell_and_save_output(0, docker_inspect_cmdline, "/", NULL);
-
-        free(docker_inspect_cmdline);
+        output = docker_inspect(root_dir, container_id);
 
         if (output == NULL || strcmp(output, "[]\n") == 0)
         {
